@@ -1,0 +1,34 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.suo
+
+[Oo]bj/
+[Bb]in/
+*.suo
+*.user
+/TestResults
+*.vspscc
+*.vssscc
+_ReSharper*
+*.dbmdl
+*.Cache
+*.StyleCop
+*.orig
+*.user
+Deployment/Packages/
+/packages
+!repositories.config
+*.rdl.data
+*.vsp
+*.psess
