@@ -10,9 +10,9 @@ luge
 lo͞oZH/noun
 1. a light toboggan for one or two people, ridden in a sitting or supine position.
 
-
 Moving a database from one server to another via backup/restore requires a lot of extra IO and you end up with files laying around.
 Dataluge allows you to stream the backup from one server to another using the virtual device interface for SQL Server backups.
+
 ---
 
 ### High level process:
