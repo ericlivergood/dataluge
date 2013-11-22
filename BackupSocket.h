@@ -14,5 +14,5 @@ protected:
 	virtual void TransferData(void);
 
 private:
-	void RunBackup(void);
+	void RunBackup(std::string instanceName, std::string databaseName);
 };

@@ -19,11 +19,11 @@ bool RestoreSocket::CanStartOperation(void)
 	return true;
 }
 
-void RestoreSocket::RunRestore(void)
+void RestoreSocket::RunRestore(std::string instanceName, std::string databaseName)
 {
 	char sqlCommand[1024];
 
-	sprintf_s(sqlCommand, 1024, "-Q \"RESTORE DATABASE pubs FROM VIRTUAL_DEVICE='%ls'\"", deviceName);
+	sprintf_s(sqlCommand, 1024, "-Q \"RESTORE DATABASE %s FROM VIRTUAL_DEVICE='%ls'\"", databaseName, deviceName);
 	
 	int rc;
 	printf ("running osql to execute: %s\n", sqlCommand);
@@ -60,7 +60,7 @@ void RestoreSocket::TransferData(void)
 
 void RestoreSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
-	std::thread r(&RestoreSocket::RunRestore, this);
+	std::thread r(&RestoreSocket::RunRestore, this, instanceName, databaseName);
 	OpenDevice();
 	std::thread w(&RestoreSocket::TransferData, this);
 	r.join();

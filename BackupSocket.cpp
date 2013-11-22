@@ -20,7 +20,7 @@ bool BackupSocket::CanStartOperation(void)
 
 void BackupSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
-	std::thread r(&BackupSocket::RunBackup, this);
+	std::thread r(&BackupSocket::RunBackup, this, instanceName, databaseName);
 	OpenDevice();
 	std::thread w(&BackupSocket::TransferData, this);
 	r.join();
@@ -50,11 +50,11 @@ void BackupSocket::TransferData(void)
 
 }
 
-void BackupSocket::RunBackup(void)
+void BackupSocket::RunBackup(std::string instanceName, std::string databaseName)
 {
 	char sqlCommand[1024];
 
-	sprintf_s(sqlCommand, 1024, "-Q \"BACKUP DATABASE pubs TO VIRTUAL_DEVICE='%ls'\"", deviceName);
+	sprintf_s(sqlCommand, 1024, "-Q \"BACKUP DATABASE %s TO VIRTUAL_DEVICE='%ls'\"", databaseName, deviceName);
 	
 	int rc;
 	printf ("running osql to execute: %s\n", sqlCommand);
