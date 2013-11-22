@@ -66,12 +66,14 @@
   <ItemGroup>
     <ClCompile Include="BackupSocket.cpp" />
     <ClCompile Include="RestoreSocket.cpp" />
+    <ClCompile Include="Spiral.cpp" />
     <ClCompile Include="VDISocket.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BackupSocket.h" />
     <ClInclude Include="RestoreSocket.h" />
+    <ClInclude Include="Spiral.h" />
     <ClInclude Include="VDISocket.h" />
     <ClInclude Include="vdi.h" />
     <ClInclude Include="vdierror.h" />
