@@ -50,7 +50,7 @@ void RestoreSocket::TransferData(void)
 		}
 		else
 		{
-			//fill the buffer by reading from the socket here.
+			recv(luge, (char*) cmd->buffer, cmd->size, 0);
 			bytes = cmd->size;
 			device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
 			printf("Transferred %u bytes\n", bytes);
