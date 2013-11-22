@@ -18,7 +18,7 @@ bool BackupSocket::CanStartOperation(void)
 	return true;
 }
 
-void BackupSocket::PerformOperation(void)
+void BackupSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
 	std::thread r(&BackupSocket::RunBackup, this);
 	OpenDevice();

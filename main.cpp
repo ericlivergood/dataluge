@@ -1,7 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
+#include <thread>
 #include "BackupSocket.h"
 #include "RestoreSocket.h"
+#include "Spiral.h"
 #include "vdierror.h"   // error constants
 
 void printError(HRESULT code);
@@ -12,15 +14,23 @@ int main(int argc, char *argv[])
 {
 	HRESULT h;
 	BackupSocket* b = new BackupSocket();
-	//RestoreSocket* r = new RestoreSocket();
+	RestoreSocket* r = new RestoreSocket();
+	Spiral* s = new Spiral();
 
-	h = b->Initialize();
-	printError(h);
-	h = b->StartOperation("", "pub");
-	printError(h);
+	printError(b->Initialize());
+	printError(r->Initialize());
+	printError(s->Initialize());
 
+	std::thread backup = b->StartOperation(NULL, "pubs"); 
+	std::thread restore = r->StartOperation(NULL, "pubs2");
+	
+	printError(s->Transfer());
+	backup.join();
+	restore.join();
 
 	int x;
+
+	delete b, r, s;
 	cin >> x;
 }
 

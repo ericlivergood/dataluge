@@ -58,7 +58,7 @@ void RestoreSocket::TransferData(void)
 	}
 }
 
-void RestoreSocket::PerformOperation(void)
+void RestoreSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
 	std::thread r(&RestoreSocket::RunRestore, this);
 	OpenDevice();

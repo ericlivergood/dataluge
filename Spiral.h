@@ -9,6 +9,7 @@ class Spiral
 public:
 	Spiral(void);
 	~Spiral(void);
+	HRESULT Initialize();
 	HRESULT Transfer();
 
 private:

@@ -26,6 +26,11 @@ Spiral::~Spiral(void)
 {
 }
 
+HRESULT Spiral::Initialize()
+{
+	return 0;
+}
+
 HRESULT Spiral::Transfer()
 {
 	return 0;

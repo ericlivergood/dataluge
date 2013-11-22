@@ -1,5 +1,6 @@
 #include <string>
 #include <objbase.h>
+#include <thread>
 #include "vdi.h"
 
 using namespace std;
@@ -11,8 +12,8 @@ public:
 	VDISocket(LPCSTR portNumber);
 	~VDISocket(void);
 	
-	HRESULT	Initialize();
-	int		StartOperation(std::string instanceName, std::string databaseName);
+	HRESULT		Initialize();
+	std::thread	StartOperation(std::string instanceName, std::string databaseName);
 	
 	virtual bool	CanStartOperation(void) = 0;
 	
@@ -21,7 +22,7 @@ public:
 protected:
 	HRESULT	OpenDevice(void);
 	
-	virtual	void	PerformOperation(void) = 0;
+	virtual	void	PerformOperation(std::string instanceName, std::string databaseName) = 0;
 	virtual	void	TransferData(void) = 0;
 
 	IClientVirtualDevice*	device;
@@ -35,6 +36,7 @@ private:
 	int		DestroyVirtualDevice(void);
 	HRESULT	InitializeNetworking(void);
 	HRESULT	Listen(void);
+	HRESULT Luge(std::string instanceName, std::string databaseName);
 
 };
 

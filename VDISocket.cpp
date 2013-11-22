@@ -49,26 +49,27 @@ VDISocket::~VDISocket(void)
 	CoUninitialize();
 }
 
-int VDISocket::StartOperation(std::string instanceName, std::string databaseName)
+HRESULT VDISocket::Luge(std::string instanceName, std::string databaseName)
 {
 	HRESULT h;
-	if(!initialized)
-	{
-		return 1234;
-	}
-
 	h = CreateVirtualDevice(instanceName);
 	if(!SUCCEEDED(h))
 		return h;
 	Listen();
-	std::thread t(&VDISocket::PerformOperation, this);
-	t.join();
-
-	h = DestroyVirtualDevice();
-	if(!SUCCEEDED(h))
-		return h;
+	PerformOperation(instanceName, databaseName);
+	DestroyVirtualDevice();
 
 	return 0;
+}
+
+std::thread VDISocket::StartOperation(std::string instanceName, std::string databaseName)
+{
+	if(!initialized)
+	{
+		//return NULL;
+	}
+	std::thread t(&VDISocket::Luge, this, instanceName, databaseName);
+	return t;
 }
 
 HRESULT VDISocket::OpenDevice()

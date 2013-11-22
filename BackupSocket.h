@@ -10,7 +10,7 @@ public:
 	virtual bool CanStartOperation(void);
 
 protected:
-	virtual void PerformOperation(void);
+	virtual void PerformOperation(std::string instanceName, std::string databaseName);
 	virtual void TransferData(void);
 
 private:
