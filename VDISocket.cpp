@@ -97,15 +97,14 @@ HRESULT VDISocket::Initialize()
 	if (!SUCCEEDED (hr))
 		return hr;
 
+	InitializeNetworking();
 	initialized=true;
 
-	struct addrinfo a;
 }
 
 HRESULT VDISocket::InitializeNetworking(void)
 {
 	WSADATA wsaData;
-	SOCKET Listener;
 	int r;
    
     struct addrinfo hints;
@@ -132,8 +131,8 @@ HRESULT VDISocket::InitializeNetworking(void)
     }
 
     // Create a SOCKET for connecting to server
-    Listener = socket(addr_info->ai_family, addr_info->ai_socktype, addr_info->ai_protocol);
-    if (Listener == INVALID_SOCKET) {
+    listener = socket(addr_info->ai_family, addr_info->ai_socktype, addr_info->ai_protocol);
+    if (listener == INVALID_SOCKET) {
         printf("socket failed with error: %ld\n", WSAGetLastError());
         freeaddrinfo(addr_info);
         WSACleanup();
@@ -141,11 +140,11 @@ HRESULT VDISocket::InitializeNetworking(void)
     }
 
     // Setup the TCP listening socket
-    bind( Listener, addr_info->ai_addr, (int)addr_info->ai_addrlen);
+    bind( listener, addr_info->ai_addr, (int)addr_info->ai_addrlen);
     if (r == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
         freeaddrinfo(addr_info);
-        closesocket(Listener);
+        closesocket(listener);
         WSACleanup();
         return 1;
     }
