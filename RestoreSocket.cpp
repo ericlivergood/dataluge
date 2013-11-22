@@ -4,7 +4,7 @@
 
 
 RestoreSocket::RestoreSocket(void)
-	: VDISocket(9002)
+	: VDISocket("9002")
 {
 }
 

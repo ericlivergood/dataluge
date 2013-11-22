@@ -3,7 +3,7 @@
 #include <thread>
 
 BackupSocket::BackupSocket(void) 
-	: VDISocket(9001)
+	: VDISocket("9001")
 {
 }
 

@@ -8,23 +8,33 @@ using namespace std;
 class VDISocket
 {
 public:
-	VDISocket(int portNumber);
+	VDISocket(LPCSTR portNumber);
 	~VDISocket(void);
-
-	HRESULT Initialize();
-	int StartOperation(std::string instanceName, std::string databaseName);
-	virtual bool CanStartOperation(void) = 0;
+	
+	HRESULT	Initialize();
+	int		StartOperation(std::string instanceName, std::string databaseName);
+	
+	virtual bool	CanStartOperation(void) = 0;
+	
+	LPCSTR Port;
 
 protected:
-	HRESULT OpenDevice(void);
-	virtual void PerformOperation(void) = 0;
-	virtual void TransferData(void) = 0;
+	HRESULT	OpenDevice(void);
+	
+	virtual	void	PerformOperation(void) = 0;
+	virtual	void	TransferData(void) = 0;
 
-	WCHAR deviceName [50];
-	IClientVirtualDevice* device;
+	IClientVirtualDevice*	device;
+	WCHAR					deviceName [50];
+	SOCKET					luge;
+	SOCKET					listener;
+
 private:
-	int CreateVirtualDevice(std::string instanceName);
-	int DestroyVirtualDevice(void);
-	void performTransfer(IClientVirtualDevice* vd, int backup);
+	HRESULT	CleanupNetworking(void); 
+	int		CreateVirtualDevice(std::string instanceName);
+	int		DestroyVirtualDevice(void);
+	HRESULT	InitializeNetworking(void);
+	HRESULT	Listen(void);
+
 };
 #endif

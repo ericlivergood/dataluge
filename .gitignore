@@ -15,6 +15,7 @@
 
 [Oo]bj/
 [Bb]in/
+[Dd]ebug/
 *.suo
 *.user
 /TestResults
@@ -32,3 +33,5 @@ Deployment/Packages/
 *.rdl.data
 *.vsp
 *.psess
+*.opensdf
+*.sdf

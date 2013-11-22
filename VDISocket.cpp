@@ -1,21 +1,31 @@
 #define _WIN32_DCOM
+#define WIN32_LEAN_AND_MEAN
 
-#include "VDISocket.h"
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <stdlib.h>
+#include <stdio.h>      
 #include <thread>
-#include <stdio.h>      // for file operations
+#include "VDISocket.h"
 #include "vdi.h"        // interface declaration
 #include "vdierror.h"   // error constants
 #include "vdiguid.h"    // define the interface identifiers.
 						// IMPORTANT: vdiguid.h can only be included in one source file.
 						// 
 
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
+
 VDConfig config;
 IClientVirtualDeviceSet2* deviceSet;
 int ServerConnectTimeOut = 10000;
 bool deviceOpened;
 bool initialized;
+struct addrinfo* addr_info = NULL;
 
-VDISocket::VDISocket(int portNumber)
+VDISocket::VDISocket(LPCSTR portNumber)
 {
 	deviceSet = NULL; 
 	deviceOpened = false;
@@ -27,11 +37,14 @@ VDISocket::VDISocket(int portNumber)
 	GUID deviceID;
 	CoCreateGuid(&deviceID);
 	StringFromGUID2(deviceID, deviceName, 49);
+
+	Port = portNumber;
 }
 
 
 VDISocket::~VDISocket(void)
 {
+	CleanupNetworking();
 	DestroyVirtualDevice();
 	CoUninitialize();
 }
@@ -47,7 +60,7 @@ int VDISocket::StartOperation(std::string instanceName, std::string databaseName
 	h = CreateVirtualDevice(instanceName);
 	if(!SUCCEEDED(h))
 		return h;
-
+	Listen();
 	std::thread t(&VDISocket::PerformOperation, this);
 	t.join();
 
@@ -74,6 +87,7 @@ HRESULT VDISocket::OpenDevice()
 HRESULT VDISocket::Initialize()
 {
 	HRESULT hr;
+	
 	hr = CoInitializeEx (NULL, COINIT_MULTITHREADED);
 	if (!SUCCEEDED (hr))
 		return hr;
@@ -83,6 +97,85 @@ HRESULT VDISocket::Initialize()
 		return hr;
 
 	initialized=true;
+
+	struct addrinfo a;
+}
+
+HRESULT VDISocket::InitializeNetworking(void)
+{
+	WSADATA wsaData;
+	SOCKET Listener;
+	int r;
+   
+    struct addrinfo hints;
+
+    // Initialize Winsock
+    r = WSAStartup(MAKEWORD(2,2), &wsaData);
+    if (r != 0) {
+        printf("WSAStartup failed with error: %d\n", r);
+        return 1;
+    }
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    // Resolve the server address and port
+    r = getaddrinfo(NULL, Port, &hints, &addr_info );
+    if ( r != 0 ) {
+        printf("getaddrinfo failed with error: %d\n", r);
+        WSACleanup();
+        return 1;
+    }
+
+    // Create a SOCKET for connecting to server
+    Listener = socket(addr_info->ai_family, addr_info->ai_socktype, addr_info->ai_protocol);
+    if (Listener == INVALID_SOCKET) {
+        printf("socket failed with error: %ld\n", WSAGetLastError());
+        freeaddrinfo(addr_info);
+        WSACleanup();
+        return 1;
+    }
+
+    // Setup the TCP listening socket
+    bind( Listener, addr_info->ai_addr, (int)addr_info->ai_addrlen);
+    if (r == SOCKET_ERROR) {
+        printf("bind failed with error: %d\n", WSAGetLastError());
+        freeaddrinfo(addr_info);
+        closesocket(Listener);
+        WSACleanup();
+        return 1;
+    }
+
+    freeaddrinfo(addr_info);
+
+	return 0;
+}
+
+HRESULT VDISocket::Listen(void)
+{
+	HRESULT r;
+	r = listen(listener, SOMAXCONN);
+    if (r == SOCKET_ERROR) {
+        printf("listen failed with error: %d\n", WSAGetLastError());
+        closesocket(listener);
+        WSACleanup();
+        return 1;
+    }
+
+	luge = accept(listener, NULL, NULL);
+	if(luge == INVALID_SOCKET)
+	{
+        printf("accept failed with error: %d\n", WSAGetLastError());
+        closesocket(listener);
+        WSACleanup();
+        return 1;		
+	}
+
+	closesocket(listener);
+	return 0;
 }
 
 int VDISocket::CreateVirtualDevice(std::string instanceName)
@@ -97,6 +190,14 @@ int VDISocket::CreateVirtualDevice(std::string instanceName)
 	return 0;
 }
 
+HRESULT VDISocket::CleanupNetworking(void)
+{
+	WSACleanup();
+	freeaddrinfo(addr_info);
+	closesocket(luge);
+	closesocket(listener);
+	return 0;
+}
 
 int VDISocket::DestroyVirtualDevice(void)
 {
@@ -106,86 +207,7 @@ int VDISocket::DestroyVirtualDevice(void)
 		deviceSet->Release();
 	}
 	deviceOpened = false;
+
 	return 0;
 }
 
-
-void VDISocket::performTransfer(IClientVirtualDevice*   vd, int backup)
-{
-    FILE *          fh;
-    char*           fname = "superbak.dmp";
-    VDC_Command *   cmd;
-    DWORD           completionCode;
-    DWORD           bytesTransferred;
-    HRESULT         hr;
-
-    fopen_s(&fh, fname, (backup)? "wb" : "rb");
-    if (fh == NULL )
-    {
-        printf ("Failed to open: %s\n", fname);
-        return;
-    }
-
-    while (SUCCEEDED (hr=vd->GetCommand (INFINITE, &cmd)))
-    {
-        bytesTransferred = 0;
-        switch (cmd->commandCode)
-        {
-            case VDC_Read:
-                bytesTransferred = fread (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size)
-                    completionCode = ERROR_SUCCESS;
-                else
-                    // assume failure is eof
-                    completionCode = ERROR_HANDLE_EOF;
-                break;
-
-            case VDC_Write:
-                bytesTransferred = fwrite (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size )
-                {
-                    completionCode = ERROR_SUCCESS;
-                }
-                else
-                    // assume failure is disk full
-                    completionCode = ERROR_DISK_FULL;
-                break;
-
-            case VDC_Flush:
-                fflush (fh);
-                completionCode = ERROR_SUCCESS;
-                break;
-    
-            case VDC_ClearError:
-                completionCode = ERROR_SUCCESS;
-                break;
-
-            default:
-                // If command is unknown...
-                completionCode = ERROR_NOT_SUPPORTED;
-        }
-
-        hr = vd->CompleteCommand (cmd, completionCode, bytesTransferred, 0);
-        if (!SUCCEEDED (hr))
-        {
-            printf ("Completion Failed: x%X\n", hr);
-            break;
-        }
-    }
-
-    if (hr != VD_E_CLOSE)
-    {
-        printf ("Unexpected termination: x%X\n", hr);
-    }
-    else
-    {
-        // As far as the data transfer is concerned, no
-        // errors occurred.  The code which issues the SQL
-        // must determine if the backup/restore was
-        // really successful.
-        //
-        printf ("Successfully completed data transfer.\n");
-    }
-
-    fclose (fh);
-}
