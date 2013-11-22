@@ -3,8 +3,8 @@
 #include "vdi.h"
 
 using namespace std;
-#ifndef VDISocket_H
-#define VDISocket_H
+
+#pragma once
 class VDISocket
 {
 public:
@@ -37,4 +37,4 @@ private:
 	HRESULT	Listen(void);
 
 };
-#endif
+

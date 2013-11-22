@@ -1,7 +1,6 @@
-#pragma once
-#ifndef RestoreSocket_H
-#define RestoreSocket_H
 #include "VDISocket.h"
+
+#pragma once
 class RestoreSocket :
 	public VDISocket
 {
@@ -17,5 +16,3 @@ protected:
 private:
 	void RunRestore(void);
 };
-#endif
-

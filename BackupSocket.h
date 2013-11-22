@@ -1,8 +1,6 @@
-#pragma once
-#ifndef BackupSocket_H
-#define BackupSocket_H
 #include "VDISocket.h"
 
+#pragma once
 class BackupSocket :
 	public VDISocket
 {
@@ -18,4 +16,3 @@ protected:
 private:
 	void RunBackup(void);
 };
-#endif
