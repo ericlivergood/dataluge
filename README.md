@@ -28,4 +28,8 @@ There is a need for a "client" install on both the source and destination as the
 TODO: Windows Service? Just an EXE that's kicked off?
 
 
+###Resources:
+Winsock examples: http://msdn.microsoft.com/en-us/library/ms737889(v=vs.85).aspx
+Beej's Guide: http://beej.us/guide/bgnet/output/html/multipage/index.html
+
 
