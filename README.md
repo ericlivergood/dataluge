@@ -33,4 +33,5 @@ Winsock examples: http://msdn.microsoft.com/en-us/library/ms737889(v=vs.85).aspx
 
 Beej's Guide: http://beej.us/guide/bgnet/output/html/multipage/index.html
 
+Documentation on VDI is limited.  The .chm file included has a full spec for the library.  Example code is here (hasn't been updated since SQL2005): http://www.microsoft.com/en-us/download/details.aspx?id=17282
 
