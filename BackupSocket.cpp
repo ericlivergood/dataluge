@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 #include "BackupSocket.h"
 #include <process.h> 
 #include <thread>
@@ -20,9 +25,10 @@ bool BackupSocket::CanStartOperation(void)
 
 void BackupSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
+	std::thread o(&BackupSocket::OpenDevice, this);
 	std::thread r(&BackupSocket::RunBackup, this, instanceName, databaseName);
-	OpenDevice();
 	std::thread w(&BackupSocket::TransferData, this);
+	o.join();
 	r.join();
 	w.join();
 }
@@ -33,28 +39,44 @@ void BackupSocket::TransferData(void)
 	DWORD bytes;
 	HRESULT r;
 
-	while(SUCCEEDED(r=device->GetCommand(INFINITE, &cmd)))
+	while(device == NULL)
 	{
-		if(cmd->commandCode != VDC_Write)
-		{
-			printf("wrong command type? %X\n", cmd->commandCode);
-		}
-		else
-		{
-			send(luge, (const char*)cmd->buffer, cmd->size, 0);
-			bytes = cmd->size;
-			device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
-			printf("Transferred %u bytes\n", bytes);
-		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 
+	while(SUCCEEDED(r=device->GetCommand(INFINITE, &cmd)))
+	{
+		switch(cmd->commandCode)
+		{
+			case VDC_Write:
+				send(luge, (const char*)cmd->buffer, cmd->size, 0);
+				bytes = cmd->size;
+				device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
+				printf("Transferred %u bytes\n", bytes);
+				break;
+			case VDC_Flush:
+				//we're done here.
+				device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
+				break;
+			default:
+				device->CompleteCommand(cmd, ERROR_NOT_SUPPORTED, 0, 0);
+
+		}
+	}
+    // shutdown the connection since we're done
+    r = shutdown(luge, SD_SEND);
+    if (r == SOCKET_ERROR) {
+        printf("shutdown failed with error: %d\n", WSAGetLastError());
+        closesocket(luge);
+        WSACleanup();
+    }
 }
 
 void BackupSocket::RunBackup(std::string instanceName, std::string databaseName)
 {
 	char sqlCommand[1024];
 
-	sprintf_s(sqlCommand, 1024, "-Q \"BACKUP DATABASE %s TO VIRTUAL_DEVICE='%ls'\"", databaseName, deviceName);
+	sprintf_s(sqlCommand, 1024, "-Q \"BACKUP DATABASE pubs TO VIRTUAL_DEVICE='%ls'\"", deviceName);
 	
 	int rc;
 	printf ("running osql to execute: %s\n", sqlCommand);

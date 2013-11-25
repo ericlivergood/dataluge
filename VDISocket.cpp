@@ -23,7 +23,6 @@ IClientVirtualDeviceSet2* deviceSet;
 int ServerConnectTimeOut = 10000;
 bool deviceOpened;
 bool initialized;
-struct addrinfo* addr_info = NULL;
 
 VDISocket::VDISocket(LPCSTR portNumber)
 {
@@ -37,7 +36,8 @@ VDISocket::VDISocket(LPCSTR portNumber)
 	GUID deviceID;
 	CoCreateGuid(&deviceID);
 	StringFromGUID2(deviceID, deviceName, 49);
-
+	printf("Device: %s \n", deviceName);
+	printf("\n");
 	Port = portNumber;
 }
 
@@ -51,10 +51,6 @@ VDISocket::~VDISocket(void)
 
 HRESULT VDISocket::Luge(std::string instanceName, std::string databaseName)
 {
-	HRESULT h;
-	h = CreateVirtualDevice(instanceName);
-	if(!SUCCEEDED(h))
-		return h;
 	Listen();
 	PerformOperation(instanceName, databaseName);
 	DestroyVirtualDevice();
@@ -62,26 +58,37 @@ HRESULT VDISocket::Luge(std::string instanceName, std::string databaseName)
 	return 0;
 }
 
-std::thread VDISocket::StartOperation(std::string instanceName, std::string databaseName)
+std::thread* VDISocket::StartOperation(std::string instanceName, std::string databaseName)
 {
-	if(!initialized)
-	{
-		//return NULL;
-	}
+	HRESULT h;
+	h = CreateVirtualDevice(instanceName);
+	if(!SUCCEEDED(h))
+		return NULL;
+
 	std::thread t(&VDISocket::Luge, this, instanceName, databaseName);
-	return t;
+	t.detach();
+	return &t;
 }
 
 HRESULT VDISocket::OpenDevice()
 {
 	HRESULT h;
+	printf("device: %s\n", deviceName);
 	h = deviceSet->GetConfiguration(ServerConnectTimeOut, &config);
 	if (!SUCCEEDED (h))
+	{
+		printf("error getting configuration: %X\n", h);
 		return h;
+	}
+
 	h = deviceSet->OpenDevice(deviceName, &device);
 	if (!SUCCEEDED (h))
+	{
+		printf("error opening device: %X\n", h);
 		return h;
+	}
 	deviceOpened = true;
+	
 	return 0;
 }
 
@@ -108,6 +115,7 @@ HRESULT VDISocket::InitializeNetworking(void)
 	int r;
    
     struct addrinfo hints;
+	struct addrinfo *result = NULL;
 
     // Initialize Winsock
     r = WSAStartup(MAKEWORD(2,2), &wsaData);
@@ -123,7 +131,7 @@ HRESULT VDISocket::InitializeNetworking(void)
     hints.ai_flags = AI_PASSIVE;
 
     // Resolve the server address and port
-    r = getaddrinfo(NULL, Port, &hints, &addr_info );
+    r = getaddrinfo(NULL, Port, &hints, &result );
     if ( r != 0 ) {
         printf("getaddrinfo failed with error: %d\n", r);
         WSACleanup();
@@ -131,25 +139,34 @@ HRESULT VDISocket::InitializeNetworking(void)
     }
 
     // Create a SOCKET for connecting to server
-    listener = socket(addr_info->ai_family, addr_info->ai_socktype, addr_info->ai_protocol);
+    listener = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (listener == INVALID_SOCKET) {
         printf("socket failed with error: %ld\n", WSAGetLastError());
-        freeaddrinfo(addr_info);
+        freeaddrinfo(result);
         WSACleanup();
         return 1;
     }
 
     // Setup the TCP listening socket
-    bind( listener, addr_info->ai_addr, (int)addr_info->ai_addrlen);
+    r = bind(listener, result->ai_addr, (int)result->ai_addrlen);
     if (r == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(addr_info);
+        freeaddrinfo(result);
         closesocket(listener);
         WSACleanup();
         return 1;
     }
 
-    freeaddrinfo(addr_info);
+    freeaddrinfo(result);
+
+	r = listen(listener, SOMAXCONN);
+    if (r == SOCKET_ERROR) {
+        printf("listen failed with error: %d\n", WSAGetLastError());
+        closesocket(listener);
+        WSACleanup();
+        return 1;
+    }
+
 
 	return 0;
 }
@@ -184,7 +201,7 @@ int VDISocket::CreateVirtualDevice(std::string instanceName)
 	std::wstring wInstanceName = std::wstring(instanceName.begin(), instanceName.end());
 	
 	hr = deviceSet->CreateEx(wInstanceName.c_str(), deviceName, &config);
-	if (!SUCCEEDED (hr))
+	if (!SUCCEEDED (hr) && hr != VD_E_PROTOCOL)
 		return hr;
 	deviceOpened = true;
 	return 0;
@@ -193,7 +210,7 @@ int VDISocket::CreateVirtualDevice(std::string instanceName)
 HRESULT VDISocket::CleanupNetworking(void)
 {
 	WSACleanup();
-	freeaddrinfo(addr_info);
+
 	closesocket(luge);
 	closesocket(listener);
 	return 0;

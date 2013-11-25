@@ -1,6 +1,10 @@
-#include "RestoreSocket.h"
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
 #include <process.h> 
 #include <thread>
+
+#include "RestoreSocket.h"
 
 
 RestoreSocket::RestoreSocket(void)
@@ -23,7 +27,7 @@ void RestoreSocket::RunRestore(std::string instanceName, std::string databaseNam
 {
 	char sqlCommand[1024];
 
-	sprintf_s(sqlCommand, 1024, "-Q \"RESTORE DATABASE %s FROM VIRTUAL_DEVICE='%ls'\"", databaseName, deviceName);
+	sprintf_s(sqlCommand, 1024, "-Q \"RESTORE DATABASE pubs2 FROM VIRTUAL_DEVICE='%ls'\"", deviceName);
 	
 	int rc;
 	printf ("running osql to execute: %s\n", sqlCommand);
@@ -42,27 +46,43 @@ void RestoreSocket::TransferData(void)
 	DWORD bytes;
 	HRESULT r;
 
+	if(device == NULL)
+	{
+		printf("restore device not initialized");
+		return;
+	}
+
 	while(SUCCEEDED(r=device->GetCommand(INFINITE, &cmd)))
 	{
-		if(cmd->commandCode != VDC_Read)
+		switch(cmd->commandCode) 
 		{
-			printf("wrong command type? %X\n", cmd->commandCode);
-		}
-		else
-		{
-			recv(luge, (char*) cmd->buffer, cmd->size, 0);
-			bytes = cmd->size;
-			device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
-			printf("Transferred %u bytes\n", bytes);
+			case VDC_Read:
+				recv(luge, (char*) cmd->buffer, cmd->size, 0);
+				bytes = cmd->size;
+				device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
+				printf("Transferred %u bytes\n", bytes);
+				break;
+			case VDC_Flush:
+				device->CompleteCommand(cmd, ERROR_SUCCESS, bytes, 0);
+			default:
+				device->CompleteCommand(cmd, ERROR_NOT_SUPPORTED, bytes, 0);
 		}
 	}
+    // shutdown the connection since we're done
+    r = shutdown(luge, SD_SEND);
+    if (r == SOCKET_ERROR) {
+        printf("shutdown failed with error: %d\n", WSAGetLastError());
+        closesocket(luge);
+        WSACleanup();
+    }
 }
 
 void RestoreSocket::PerformOperation(std::string instanceName, std::string databaseName)
 {
+	std::thread o(&RestoreSocket::OpenDevice, this);
 	std::thread r(&RestoreSocket::RunRestore, this, instanceName, databaseName);
-	OpenDevice();
 	std::thread w(&RestoreSocket::TransferData, this);
+	o.join();
 	r.join();
 	w.join();
 }

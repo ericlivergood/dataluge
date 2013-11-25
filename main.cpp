@@ -19,19 +19,24 @@ int main(int argc, char *argv[])
 
 	printError(b->Initialize());
 	printError(r->Initialize());
-	printError(s->Initialize());
+	h = s->Initialize();
+	if(h > 0)
+	{
+		printf("Error initializing spiral");
+		return 1;
+	}
 
-	std::thread backup = b->StartOperation(NULL, "pubs"); 
-	std::thread restore = r->StartOperation(NULL, "pubs2");
+	std::thread* backup = b->StartOperation("", "pubs"); 
+	std::thread* restore = r->StartOperation("", "pubs2");
 	
-	printError(s->Transfer());
-	backup.join();
-	restore.join();
+	if(b != NULL )//&& r != NULL)
+	{
+		printError(s->Transfer());
+	}
+	delete b,  s;
 
 	int x;
-
-	delete b, r, s;
-	cin >> x;
+	std::cin >> x;
 }
 
 void printError(HRESULT code)

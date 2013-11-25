@@ -31,8 +31,27 @@ Spiral::~Spiral(void)
 
 HRESULT Spiral::Initialize()
 {
-	ConnectTo(&Source, SourceAddr, SourcePort);
-	ConnectTo(&Dest, DestAddr, DestPort);
+	HRESULT h;
+	h = ConnectTo(&Source, SourceAddr, SourcePort);
+	if(!SUCCEEDED(h))
+	{
+		printf("Initializing Source Socket Failed 0x%X\n", h);
+		return h;
+	}
+
+	//h = ConnectTo(&Dest, DestAddr, DestPort);
+
+	if(!SUCCEEDED(h))
+	{
+		printf("Initializing Source Socket Failed 0x%X\n", h);
+		return h;
+	}
+
+	if(Source == INVALID_SOCKET || Dest == INVALID_SOCKET)
+	{
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -67,7 +86,29 @@ HRESULT Spiral::ConnectTo(SOCKET* Socket, LPCSTR Address, LPCSTR Port)
         return 1;
     }
 
-	Socket = &ConnectSocket;
+    // Attempt to connect to an address until one succeeds
+    for(ptr=result; ptr != NULL ;ptr=ptr->ai_next) {
+
+        // Create a SOCKET for connecting to server
+        ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, 
+            ptr->ai_protocol);
+        if (ConnectSocket == INVALID_SOCKET) {
+            printf("socket failed with error: %ld\n", WSAGetLastError());
+            WSACleanup();
+            return 1;
+        }
+
+        // Connect to server.
+        r = connect( ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+        if (r == SOCKET_ERROR) {
+            closesocket(ConnectSocket);
+            ConnectSocket = INVALID_SOCKET;
+            continue;
+        }
+        break;
+    }
+
+	*Socket = ConnectSocket;
 	return 0;
 }
 
@@ -83,6 +124,7 @@ HRESULT Spiral::Transfer()
 		if(r > 0)
 		{
 			s = send(Dest, recvbuf, recvbuflen, 0);
+			
 			if(s != r)
 			{
 				printf("send failed with error: %d\n", WSAGetLastError());
@@ -93,10 +135,11 @@ HRESULT Spiral::Transfer()
 			{
 				printf("Pushed %d bytes\n", s);
 			}
+			//printf("%X", recvbuf);
 		}
 		else if(r == 0)
 		{
-			printf("Connection Closed.\n", s);
+			printf("Connection Closed.\n", r);
 		}
 		else
 		{

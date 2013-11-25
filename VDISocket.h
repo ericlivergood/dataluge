@@ -3,8 +3,6 @@
 #include <thread>
 #include "vdi.h"
 
-using namespace std;
-
 #pragma once
 class VDISocket
 {
@@ -12,8 +10,8 @@ public:
 	VDISocket(LPCSTR portNumber);
 	~VDISocket(void);
 	
-	HRESULT		Initialize();
-	std::thread	StartOperation(std::string instanceName, std::string databaseName);
+	HRESULT			Initialize();
+	std::thread*	StartOperation(std::string instanceName, std::string databaseName);
 	
 	virtual bool	CanStartOperation(void) = 0;
 	
